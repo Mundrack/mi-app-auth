@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏢 Sistema Multi-Tenant
 
-## Getting Started
+Sistema de gestión multi-organizacional con Next.js 14 y Supabase.
 
-First, run the development server:
+## 🚀 Características
 
+- ✅ Multi-tenant (múltiples organizaciones)
+- ✅ 3 roles: Super Admin, Owner, Member
+- ✅ Solicitudes de acceso con aprobación
+- ✅ Dashboard personalizado por rol
+- ✅ Modelo Snowflake Schema optimizado
+- ✅ Autenticación con confirmación de email
+- ✅ Diseño minimalista responsive
+
+## 📋 Stack Tecnológico
+
+- **Frontend:** Next.js 14 (App Router) + TypeScript
+- **Backend:** Supabase (PostgreSQL + Auth + Storage)
+- **Styling:** Tailwind CSS
+- **Deployment:** Vercel
+
+## 🔧 Instalación
+
+1. Clona el repositorio:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone [tu-repo]
+cd mi-app-multi-tenant
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Instala dependencias:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Configura variables de entorno:
+- Copia `.env.local` y completa con tus datos de Supabase
+- Obtén las keys desde: Supabase Dashboard → Settings → API
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Ejecuta el proyecto:
+```bash
+npm run dev
+```
 
-## Learn More
+5. Abre en tu navegador:
+```
+http://localhost:3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 🗄️ Base de Datos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+El proyecto usa un modelo **Snowflake Schema** optimizado.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Ejecutar migraciones SQL:
+1. Ve a Supabase Dashboard → SQL Editor
+2. Ejecuta los scripts en orden:
+   - PARTE 1: Tablas principales
+   - PARTE 2: Índices y triggers
+   - PARTE 3: RLS y datos iniciales
 
-## Deploy on Vercel
+## 👥 Roles del Sistema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Super Admin
+- Ve todas las organizaciones
+- Gestiona todos los usuarios
+- Panel de control global
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Owner (Dueño de Organización)
+- Crea su organización
+- Aprueba/rechaza solicitudes
+- Gestiona empleados
+- Ve dashboard de su empresa
+
+### Member (Empleado)
+- Solicita unirse a múltiples organizaciones
+- Ve sus datos personales
+- Ve info de sus empresas
+
+## 📁 Estructura del Proyecto
+
+```
+mi-app-multi-tenant/
+├── app/              # Pages y layouts
+├── components/       # Componentes UI
+├── lib/              # Supabase, utils, hooks
+└── public/           # Assets estáticos
+```
+
+## 🔐 Seguridad
+
+- Row Level Security (RLS) habilitado
+- Políticas granulares por rol
+- Service Role Key protegida
+- Logs de auditoría completos
+
+## 📝 Scripts Disponibles
+
+- `npm run dev` - Modo desarrollo
+- `npm run build` - Build producción
+- `npm run start` - Iniciar producción
+- `npm run lint` - Linter
+
+## 🚀 Deploy
+
+### Vercel (Recomendado)
+1. Conecta tu repo con Vercel
+2. Agrega variables de entorno
+3. Deploy automático
+
+### Otras plataformas
+- Compatible con cualquier host de Next.js
+- Requiere Node.js 18+
+
+## 📧 Contacto
+
+Para soporte o consultas: [tu-email]
+
+## 📄 Licencia
+
+Proyecto privado - Todos los derechos reservados
