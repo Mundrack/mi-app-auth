@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Habilitar imágenes de Supabase Storage
   images: {
     remotePatterns: [
       {
@@ -11,7 +10,6 @@ const nextConfig = {
     ],
   },
   
-  // Variables de entorno expuestas al cliente
   env: {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   },
