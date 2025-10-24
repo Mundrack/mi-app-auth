@@ -22,7 +22,8 @@ export default function LoginPage() {
     try {
       // Verificar si es Super Admin
       if (validateAdminCredentials(email, password)) {
-        // Login como admin (sin Supabase Auth)
+        // Guardar sesión de admin
+        sessionStorage.setItem('admin_session', 'true')
         router.push('/admin/dashboard')
         return
       }

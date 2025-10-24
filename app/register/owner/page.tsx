@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
-import { generateSlug } from '@/lib/utils/formatters'
 import type { Industry } from '@/lib/types'
 
 export default function RegisterOwnerPage() {
@@ -63,92 +62,40 @@ export default function RegisterOwnerPage() {
       return
     }
 
-    // Paso 2: Crear todo
+    // Paso 2: Crear todo usando el API route
     setLoading(true)
     setError('')
 
     try {
-      // 1. Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: formData.full_name,
-          },
+      // Llamar al API route que usa el cliente admin
+      const response = await fetch('/api/register/owner', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(formData),
       })
 
-      if (authError) throw authError
-      if (!authData.user) throw new Error('No se pudo crear el usuario')
+      const result = await response.json()
 
-      const userId = authData.user.id
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al crear la cuenta')
+      }
 
-      // 2. Crear organización
-      const orgSlug = generateSlug(formData.organization_name)
-      const { data: orgData, error: orgError } = await supabase
-        .from('dim_organizations')
-        .insert({
-          name: formData.organization_name,
-          slug: orgSlug,
-        })
-        .select()
-        .single()
+      // Login automático después del registro
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
 
-      if (orgError) throw orgError
+      if (signInError) {
+        // Si falla el login, redirigir a login manual
+        router.push('/login?message=Cuenta creada exitosamente. Por favor inicia sesión.')
+        return
+      }
 
-      // 3. Crear ubicación
-      const { data: locationData, error: locationError } = await supabase
-        .from('dim_locations')
-        .insert({
-          city: formData.city,
-          country: formData.country,
-        })
-        .select()
-        .single()
-
-      if (locationError) throw locationError
-
-      // 4. Crear detalles de organización
-      const { error: detailsError } = await supabase
-        .from('fact_organization_details')
-        .insert({
-          organization_id: orgData.id,
-          industry_id: formData.industry_id || null,
-          location_id: locationData.id,
-          size: formData.size,
-          website: formData.website || null,
-          description: formData.description || null,
-        })
-
-      if (detailsError) throw detailsError
-
-      // 5. Crear perfil de usuario
-      const { error: profileError } = await supabase
-        .from('dim_users')
-        .insert({
-          id: userId,
-          email: formData.email,
-          full_name: formData.full_name,
-          phone: formData.phone || null,
-        })
-
-      if (profileError) throw profileError
-
-      // 6. Crear membresía (Owner)
-      const { error: membershipError } = await supabase
-        .from('fact_memberships')
-        .insert({
-          user_id: userId,
-          organization_id: orgData.id,
-          role: 'owner',
-        })
-
-      if (membershipError) throw membershipError
-
-      // Redirigir a verificar email
-      router.push('/verify-email')
+      // Redirigir al dashboard
+      router.push('/dashboard')
     } catch (err: any) {
       console.error('Registration error:', err)
       setError(err.message || 'Error al crear la cuenta')
