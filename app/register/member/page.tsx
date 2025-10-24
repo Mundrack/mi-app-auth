@@ -26,19 +26,39 @@ export default function RegisterMemberPage() {
     }>
   })
 
-  // Cargar organizaciones y puestos
-  useEffect(() => {
-    async function loadData() {
-      const [orgsRes, positionsRes] = await Promise.all([
-        supabase.from('dim_organizations').select('*').eq('is_active', true).order('name'),
-        supabase.from('dim_positions').select('*').order('title')
-      ])
+// Cargar organizaciones y puestos
+useEffect(() => {
+  async function loadData() {
+    try {
+      // Cargar organizaciones desde API público
+      const orgsResponse = await fetch('/api/organizations/public')
+      const orgsData = await orgsResponse.json()
       
-      if (orgsRes.data) setOrganizations(orgsRes.data)
-      if (positionsRes.data) setPositions(positionsRes.data)
+      // Cargar posiciones desde API público
+      const positionsResponse = await fetch('/api/positions/public')
+      const positionsData = await positionsResponse.json()
+      
+      if (orgsData.success && orgsData.organizations) {
+        setOrganizations(orgsData.organizations)
+        console.log('✅ Organizations loaded:', orgsData.organizations.length)
+      } else {
+        console.error('❌ Error loading organizations:', orgsData.error)
+        setError('No se pudieron cargar las organizaciones')
+      }
+
+      if (positionsData.success && positionsData.positions) {
+        setPositions(positionsData.positions)
+        console.log('✅ Positions loaded:', positionsData.positions.length)
+      } else {
+        console.error('❌ Error loading positions:', positionsData.error)
+      }
+    } catch (error) {
+      console.error('❌ Load data error:', error)
+      setError('Error al cargar los datos')
     }
-    loadData()
-  }, [])
+  }
+  loadData()
+}, [])
 
   const toggleOrganization = (orgId: string) => {
     if (selectedOrgs.includes(orgId)) {

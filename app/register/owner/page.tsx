@@ -35,11 +35,22 @@ export default function RegisterOwnerPage() {
   // Cargar industrias
   useEffect(() => {
     async function loadIndustries() {
-      const { data } = await supabase
-        .from('dim_industries')
-        .select('*')
-        .order('name')
-      if (data) setIndustries(data)
+      try {
+        // Usar el cliente normal está bien para industrias porque son públicas
+        const { data, error } = await supabase
+          .from('dim_industries')
+          .select('*')
+          .order('name')
+
+        if (error) {
+          console.error('Error loading industries:', error)
+        } else if (data) {
+          setIndustries(data)
+          console.log('✅ Industries loaded:', data.length)
+        }
+      } catch (err) {
+        console.error('❌ Error:', err)
+      }
     }
     loadIndustries()
   }, [])
