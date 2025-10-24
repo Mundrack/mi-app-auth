@@ -26,39 +26,39 @@ export default function RegisterMemberPage() {
     }>
   })
 
-// Cargar organizaciones y puestos
-useEffect(() => {
-  async function loadData() {
-    try {
-      // Cargar organizaciones desde API público
-      const orgsResponse = await fetch('/api/organizations/public')
-      const orgsData = await orgsResponse.json()
-      
-      // Cargar posiciones desde API público
-      const positionsResponse = await fetch('/api/positions/public')
-      const positionsData = await positionsResponse.json()
-      
-      if (orgsData.success && orgsData.organizations) {
-        setOrganizations(orgsData.organizations)
-        console.log('✅ Organizations loaded:', orgsData.organizations.length)
-      } else {
-        console.error('❌ Error loading organizations:', orgsData.error)
-        setError('No se pudieron cargar las organizaciones')
-      }
+  // Cargar organizaciones y puestos
+  useEffect(() => {
+    async function loadData() {
+      try {
+        // Cargar organizaciones desde API público
+        const orgsResponse = await fetch('/api/organizations/public')
+        const orgsData = await orgsResponse.json()
+        
+        // Cargar posiciones desde API público
+        const positionsResponse = await fetch('/api/positions/public')
+        const positionsData = await positionsResponse.json()
+        
+        if (orgsData.success && orgsData.organizations) {
+          setOrganizations(orgsData.organizations)
+          console.log('✅ Organizations loaded:', orgsData.organizations.length)
+        } else {
+          console.error('❌ Error loading organizations:', orgsData.error)
+          setError('No se pudieron cargar las organizaciones')
+        }
 
-      if (positionsData.success && positionsData.positions) {
-        setPositions(positionsData.positions)
-        console.log('✅ Positions loaded:', positionsData.positions.length)
-      } else {
-        console.error('❌ Error loading positions:', positionsData.error)
+        if (positionsData.success && positionsData.positions) {
+          setPositions(positionsData.positions)
+          console.log('✅ Positions loaded:', positionsData.positions.length)
+        } else {
+          console.error('❌ Error loading positions:', positionsData.error)
+        }
+      } catch (error) {
+        console.error('❌ Load data error:', error)
+        setError('Error al cargar los datos')
       }
-    } catch (error) {
-      console.error('❌ Load data error:', error)
-      setError('Error al cargar los datos')
     }
-  }
-  loadData()
-}, [])
+    loadData()
+  }, [])
 
   const toggleOrganization = (orgId: string) => {
     if (selectedOrgs.includes(orgId)) {
@@ -112,7 +112,7 @@ useEffect(() => {
       return
     }
 
-    // Paso 3: Enviar solicitudes
+    // Paso 3: Enviar solicitudes usando API route
     setLoading(true)
     setError('')
 
@@ -123,34 +123,20 @@ useEffect(() => {
         throw new Error('Por favor selecciona un puesto para cada organización')
       }
 
-      // 1. Crear usuario temporal en dim_users (sin auth aún)
-      const { data: userData, error: userError } = await supabase
-        .from('dim_users')
-        .insert({
-          email: formData.email,
-          full_name: formData.full_name,
-          phone: formData.phone || null,
-          is_active: false, // Inactivo hasta que sea aprobado
-        })
-        .select()
-        .single()
+      // Llamar al API route
+      const response = await fetch('/api/register/member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
-      if (userError) throw userError
+      const result = await response.json()
 
-      // 2. Crear todas las solicitudes
-      const requests = formData.requests.map(r => ({
-        user_id: userData.id,
-        organization_id: r.organization_id,
-        position_id: r.position_id,
-        message: r.message || null,
-        status: 'pending' as const
-      }))
-
-      const { error: requestsError } = await supabase
-        .from('fact_join_requests')
-        .insert(requests)
-
-      if (requestsError) throw requestsError
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al enviar solicitudes')
+      }
 
       // Redirigir a página de confirmación
       router.push('/request-sent')
