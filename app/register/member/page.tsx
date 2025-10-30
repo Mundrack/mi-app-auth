@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase/client'
 import type { Organization, Position } from '@/lib/types'
 
 export default function RegisterMemberPage() {
@@ -18,6 +17,8 @@ export default function RegisterMemberPage() {
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
+    password: '',
+    confirmPassword: '',
     phone: '',
     requests: [] as Array<{
       organization_id: string
@@ -30,30 +31,21 @@ export default function RegisterMemberPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        // Cargar organizaciones desde API público
         const orgsResponse = await fetch('/api/organizations/public')
         const orgsData = await orgsResponse.json()
         
-        // Cargar posiciones desde API público
         const positionsResponse = await fetch('/api/positions/public')
         const positionsData = await positionsResponse.json()
         
         if (orgsData.success && orgsData.organizations) {
           setOrganizations(orgsData.organizations)
-          console.log('✅ Organizations loaded:', orgsData.organizations.length)
-        } else {
-          console.error('❌ Error loading organizations:', orgsData.error)
-          setError('No se pudieron cargar las organizaciones')
         }
 
         if (positionsData.success && positionsData.positions) {
           setPositions(positionsData.positions)
-          console.log('✅ Positions loaded:', positionsData.positions.length)
-        } else {
-          console.error('❌ Error loading positions:', positionsData.error)
         }
       } catch (error) {
-        console.error('❌ Load data error:', error)
+        console.error('Error loading data:', error)
         setError('Error al cargar los datos')
       }
     }
@@ -93,8 +85,17 @@ export default function RegisterMemberPage() {
     e.preventDefault()
     
     if (step === 1) {
-      if (!formData.full_name || !formData.email) {
+      // Validar paso 1
+      if (!formData.full_name || !formData.email || !formData.password) {
         setError('Por favor completa todos los campos requeridos')
+        return
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError('Las contraseñas no coinciden')
+        return
+      }
+      if (formData.password.length < 8) {
+        setError('La contraseña debe tener al menos 8 caracteres')
         return
       }
       setStep(2)
@@ -112,18 +113,16 @@ export default function RegisterMemberPage() {
       return
     }
 
-    // Paso 3: Enviar solicitudes usando API route
+    // Paso 3: Enviar solicitudes
     setLoading(true)
     setError('')
 
     try {
-      // Validar que todas las solicitudes tengan position_id
       const invalidRequests = formData.requests.filter(r => !r.position_id)
       if (invalidRequests.length > 0) {
         throw new Error('Por favor selecciona un puesto para cada organización')
       }
 
-      // Llamar al API route
       const response = await fetch('/api/register/member', {
         method: 'POST',
         headers: {
@@ -138,7 +137,6 @@ export default function RegisterMemberPage() {
         throw new Error(result.error || 'Error al enviar solicitudes')
       }
 
-      // Redirigir a página de confirmación
       router.push('/request-sent')
     } catch (err: any) {
       console.error('Registration error:', err)
@@ -159,7 +157,6 @@ export default function RegisterMemberPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-12">
-        {/* Progress */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 1 ? 'bg-gray-900 text-white' : 'bg-gray-200'}`}>1</div>
@@ -179,7 +176,7 @@ export default function RegisterMemberPage() {
           Unirse a una Organización
         </h1>
         <p className="text-gray-600 mb-8 text-center">
-          Solicita acceso a una o más empresas
+          Crea tu cuenta y solicita acceso a una o más empresas
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -189,7 +186,6 @@ export default function RegisterMemberPage() {
             </div>
           )}
 
-          {/* Paso 1: Datos personales */}
           {step === 1 && (
             <>
               <div>
@@ -224,13 +220,35 @@ export default function RegisterMemberPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña *</label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+                <p className="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña *</label>
+                <input
+                  type="password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+
               <button type="submit" className="w-full py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors">
                 Continuar
               </button>
             </>
           )}
 
-          {/* Paso 2: Seleccionar organizaciones */}
           {step === 2 && (
             <>
               <p className="text-sm text-gray-600">Selecciona las organizaciones a las que deseas unirte:</p>
@@ -262,7 +280,6 @@ export default function RegisterMemberPage() {
             </>
           )}
 
-          {/* Paso 3: Detalles por organización */}
           {step === 3 && (
             <>
               <div className="space-y-6">
