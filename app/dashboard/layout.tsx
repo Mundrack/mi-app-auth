@@ -3,20 +3,21 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { Logo } from '@/components/Logo'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useUser } from '@/lib/hooks/useUser'
 import { 
   LayoutDashboard, 
   Building2, 
   Users, 
-  FileText, 
   UserCircle, 
   LogOut,
   Menu,
   X,
   Bell,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Mail
 } from 'lucide-react'
 
 export default function DashboardLayout({
@@ -50,12 +51,12 @@ export default function DashboardLayout({
 
   if (!user) return null
 
-  // Links del menú según rol
+  // Links del menú según rol (SIN SOLICITUDES)
   const ownerLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/dashboard/organization', label: 'Mi Organización', icon: Building2 },
     { href: '/dashboard/members', label: 'Empleados', icon: Users },
-    { href: '/dashboard/requests', label: 'Solicitudes', icon: FileText },
+    { href: '/dashboard/invitations', label: 'Invitaciones', icon: Mail },
     { href: '/dashboard/profile', label: 'Mi Perfil', icon: UserCircle },
   ]
 
@@ -80,12 +81,7 @@ export default function DashboardLayout({
               {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
             
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">MA</span>
-              </div>
-              <span className="hidden sm:block text-lg font-semibold text-slate-900">Mi App</span>
-            </Link>
+            <Logo size="md" showText href="/dashboard" />
           </div>
 
           {/* Right side */}
@@ -115,30 +111,41 @@ export default function DashboardLayout({
               </button>
 
               {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2">
-                  <Link
-                    href="/dashboard/profile"
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
-                  >
-                    <UserCircle className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm text-slate-700">Mi Perfil</span>
-                  </Link>
-                  <Link
-                    href="/dashboard/settings"
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
-                  >
-                    <Settings className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm text-slate-700">Configuración</span>
-                  </Link>
-                  <hr className="my-2 border-slate-200" />
-                  <button
-                    onClick={signOut}
-                    className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-red-600"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="text-sm font-medium">Cerrar Sesión</span>
-                  </button>
-                </div>
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setProfileOpen(false)}
+                  ></div>
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-20">
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
+                    >
+                      <UserCircle className="w-4 h-4 text-slate-600" />
+                      <span className="text-sm text-slate-700">Mi Perfil</span>
+                    </Link>
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => setProfileOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
+                    >
+                      <Settings className="w-4 h-4 text-slate-600" />
+                      <span className="text-sm text-slate-700">Configuración</span>
+                    </Link>
+                    <hr className="my-2 border-slate-200" />
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false)
+                        signOut()
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-red-600"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span className="text-sm font-medium">Cerrar Sesión</span>
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -150,15 +157,7 @@ export default function DashboardLayout({
         <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMenuOpen(false)}>
           <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">MA</span>
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Mi App</p>
-                  <p className="text-xs text-slate-500">Multi-Tenant System</p>
-                </div>
-              </div>
+              <Logo size="md" showText />
             </div>
             <nav className="p-4 space-y-1">
               {links.map((link) => {

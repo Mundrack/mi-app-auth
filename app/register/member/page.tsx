@@ -1,17 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { Organization, Position } from '@/lib/types'
+import { Logo } from '@/components/Logo'
+import { UserPlus, Mail, Lock, User, Phone, AlertCircle } from 'lucide-react'
 
 export default function RegisterMemberPage() {
-  const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [positions, setPositions] = useState<Position[]>([])
   const [error, setError] = useState('')
-  const [selectedOrgs, setSelectedOrgs] = useState<string[]>([])
   const router = useRouter()
 
   const [formData, setFormData] = useState({
@@ -19,111 +16,35 @@ export default function RegisterMemberPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    phone: '',
-    requests: [] as Array<{
-      organization_id: string
-      position_id: string
-      message: string
-    }>
+    phone: ''
   })
-
-  // Cargar organizaciones y puestos
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const orgsResponse = await fetch('/api/organizations/public')
-        const orgsData = await orgsResponse.json()
-        
-        const positionsResponse = await fetch('/api/positions/public')
-        const positionsData = await positionsResponse.json()
-        
-        if (orgsData.success && orgsData.organizations) {
-          setOrganizations(orgsData.organizations)
-        }
-
-        if (positionsData.success && positionsData.positions) {
-          setPositions(positionsData.positions)
-        }
-      } catch (error) {
-        console.error('Error loading data:', error)
-        setError('Error al cargar los datos')
-      }
-    }
-    loadData()
-  }, [])
-
-  const toggleOrganization = (orgId: string) => {
-    if (selectedOrgs.includes(orgId)) {
-      setSelectedOrgs(selectedOrgs.filter(id => id !== orgId))
-      setFormData({
-        ...formData,
-        requests: formData.requests.filter(r => r.organization_id !== orgId)
-      })
-    } else {
-      setSelectedOrgs([...selectedOrgs, orgId])
-      setFormData({
-        ...formData,
-        requests: [...formData.requests, {
-          organization_id: orgId,
-          position_id: '',
-          message: ''
-        }]
-      })
-    }
-  }
-
-  const updateRequest = (orgId: string, field: string, value: string) => {
-    setFormData({
-      ...formData,
-      requests: formData.requests.map(r =>
-        r.organization_id === orgId ? { ...r, [field]: value } : r
-      )
-    })
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (step === 1) {
-      // Validar paso 1
-      if (!formData.full_name || !formData.email || !formData.password) {
-        setError('Por favor completa todos los campos requeridos')
-        return
-      }
-      if (formData.password !== formData.confirmPassword) {
-        setError('Las contraseñas no coinciden')
-        return
-      }
-      if (formData.password.length < 8) {
-        setError('La contraseña debe tener al menos 8 caracteres')
-        return
-      }
-      setStep(2)
-      setError('')
-      return
-    }
-
-    if (step === 2) {
-      if (selectedOrgs.length === 0) {
-        setError('Selecciona al menos una organización')
-        return
-      }
-      setStep(3)
-      setError('')
-      return
-    }
-
-    // Paso 3: Enviar solicitudes
     setLoading(true)
     setError('')
 
-    try {
-      const invalidRequests = formData.requests.filter(r => !r.position_id)
-      if (invalidRequests.length > 0) {
-        throw new Error('Por favor selecciona un puesto para cada organización')
-      }
+    // Validaciones
+    if (!formData.full_name || !formData.email || !formData.password) {
+      setError('Por favor completa todos los campos requeridos')
+      setLoading(false)
+      return
+    }
 
-      const response = await fetch('/api/register/member', {
+    if (formData.password !== formData.confirmPassword) {
+      setError('Las contraseñas no coinciden')
+      setLoading(false)
+      return
+    }
+
+    if (formData.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/register/member/simple', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,204 +55,158 @@ export default function RegisterMemberPage() {
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Error al enviar solicitudes')
+        throw new Error(result.error || 'Error al crear cuenta')
       }
 
-      router.push('/request-sent')
+      router.push('/login?message=Cuenta creada exitosamente. Inicia sesión para continuar.')
     } catch (err: any) {
       console.error('Registration error:', err)
-      setError(err.message || 'Error al enviar solicitudes')
+      setError(err.message || 'Error al crear cuenta')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/" className="text-2xl font-semibold text-gray-900">
-            Mi App
-          </Link>
+          <Logo size="md" showText href="/" />
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-12">
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 1 ? 'bg-gray-900 text-white' : 'bg-gray-200'}`}>1</div>
-            <div className={`w-12 h-1 ${step >= 2 ? 'bg-gray-900' : 'bg-gray-200'}`}></div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 2 ? 'bg-gray-900 text-white' : 'bg-gray-200'}`}>2</div>
-            <div className={`w-12 h-1 ${step >= 3 ? 'bg-gray-900' : 'bg-gray-200'}`}></div>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${step >= 3 ? 'bg-gray-900 text-white' : 'bg-gray-200'}`}>3</div>
-          </div>
-          <p className="text-center text-sm text-gray-600">
-            {step === 1 && 'Datos Personales'}
-            {step === 2 && 'Seleccionar Organizaciones'}
-            {step === 3 && 'Detalles de Solicitudes'}
-          </p>
-        </div>
-
-        <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
-          Unirse a una Organización
-        </h1>
-        <p className="text-gray-600 mb-8 text-center">
-          Crea tu cuenta y solicita acceso a una o más empresas
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">{error}</p>
+      <main className="max-w-md mx-auto px-4 py-12">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header con gradiente */}
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-8 text-center text-white">
+            <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="w-8 h-8" />
             </div>
-          )}
+            <h1 className="text-3xl font-bold mb-2">Crear Cuenta</h1>
+            <p className="text-purple-100">Regístrate para acceder a la plataforma</p>
+          </div>
 
-          {step === 1 && (
-            <>
+          {/* Content */}
+          <div className="p-8">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre Completo *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <User className="w-4 h-4 text-slate-400" />
+                  Nombre Completo *
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.full_name}
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="Juan Pérez"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-slate-400" />
+                  Email *
+                </label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="tu@email.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-slate-400" />
+                  Teléfono
+                </label>
                 <input
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="+593 99 123 4567"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-slate-400" />
+                  Contraseña *
+                </label>
                 <input
                   type="password"
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="••••••••"
                 />
-                <p className="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+                <p className="text-xs text-slate-500 mt-1">Mínimo 8 caracteres</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-slate-400" />
+                  Confirmar Contraseña *
+                </label>
                 <input
                   type="password"
                   required
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  placeholder="••••••••"
                 />
               </div>
 
-              <button type="submit" className="w-full py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors">
-                Continuar
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl"
+              >
+                {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
               </button>
-            </>
-          )}
+            </form>
 
-          {step === 2 && (
-            <>
-              <p className="text-sm text-gray-600">Selecciona las organizaciones a las que deseas unirte:</p>
-              <div className="space-y-3 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
-                {organizations.map((org) => (
-                  <label
-                    key={org.id}
-                    className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedOrgs.includes(org.id)}
-                      onChange={() => toggleOrganization(org.id)}
-                      className="w-5 h-5"
-                    />
-                    <span className="font-medium text-gray-900">{org.name}</span>
-                  </label>
-                ))}
-              </div>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-slate-600">
+                ¿Ya tienes cuenta?{' '}
+                <Link href="/login" className="text-purple-600 hover:text-purple-700 font-semibold">
+                  Inicia Sesión
+                </Link>
+              </p>
+            </div>
 
-              <div className="flex gap-4">
-                <button type="button" onClick={() => setStep(1)} className="flex-1 py-3 bg-white text-gray-900 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50">
-                  Atrás
-                </button>
-                <button type="submit" className="flex-1 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800">
-                  Continuar
-                </button>
-              </div>
-            </>
-          )}
+            {/* Info sobre invitaciones */}
+            <div className="mt-6 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800">
+                💡 <strong>¿Tienes una invitación de una empresa?</strong> Usa el link que te enviaron para unirte automáticamente.
+              </p>
+            </div>
+          </div>
+        </div>
 
-          {step === 3 && (
-            <>
-              <div className="space-y-6">
-                {formData.requests.map((request) => {
-                  const org = organizations.find(o => o.id === request.organization_id)
-                  return (
-                    <div key={request.organization_id} className="border border-gray-200 rounded-lg p-6">
-                      <h3 className="font-semibold text-gray-900 mb-4">{org?.name}</h3>
-                      
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Puesto Deseado *</label>
-                          <select
-                            required
-                            value={request.position_id}
-                            onChange={(e) => updateRequest(request.organization_id, 'position_id', e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                          >
-                            <option value="">Seleccionar...</option>
-                            {positions.map((pos) => (
-                              <option key={pos.id} value={pos.id}>{pos.title}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Mensaje (opcional)</label>
-                          <textarea
-                            rows={3}
-                            value={request.message}
-                            onChange={(e) => updateRequest(request.organization_id, 'message', e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                            placeholder="¿Por qué quieres unirte?"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex gap-4">
-                <button type="button" onClick={() => setStep(2)} className="flex-1 py-3 bg-white text-gray-900 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50">
-                  Atrás
-                </button>
-                <button type="submit" disabled={loading} className="flex-1 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50">
-                  {loading ? 'Enviando...' : 'Enviar Solicitudes'}
-                </button>
-              </div>
-            </>
-          )}
-        </form>
+        {/* Back to home */}
+        <div className="mt-6 text-center">
+          <Link
+            href="/"
+            className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            ← Volver al inicio
+          </Link>
+        </div>
       </main>
     </div>
   )
