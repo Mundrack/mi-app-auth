@@ -13,11 +13,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Crear usuario en Auth (con su contraseña)
+    // 1. Crear usuario en Auth (CON confirmación de email)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirmar email
+      email_confirm: false, // ← Requiere confirmación
       user_metadata: {
         full_name,
       }
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
           email,
           full_name,
           phone: phone || null,
-          is_active: false, // INACTIVO hasta que Owner apruebe
+          is_active: false,
         })
 
       if (userError) {
@@ -71,9 +71,47 @@ export async function POST(request: NextRequest) {
         throw requestsError
       }
 
+      // 4. Enviar email de confirmación al usuario
+      const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+      })
+
+      if (emailError) {
+        console.error('Error sending confirmation email:', emailError)
+      }
+
+      // 5. Enviar notificación a los Owners de las organizaciones
+      for (const request of requests) {
+        // Obtener emails de los owners de esta organización
+        const { data: owners } = await supabaseAdmin
+          .from('fact_memberships')
+          .select(`
+            dim_users!inner(email, full_name)
+          `)
+          .eq('organization_id', request.organization_id)
+          .eq('role', 'owner')
+          .eq('is_active', true)
+
+        if (owners && owners.length > 0) {
+          // Obtener info de la organización
+          const { data: orgData } = await supabaseAdmin
+            .from('dim_organizations')
+            .select('name')
+            .eq('id', request.organization_id)
+            .single()
+
+          // Aquí enviarías el email a cada owner
+          // Por ahora solo lo logueamos
+          console.log(`📧 Notificar a owners de ${orgData?.name}:`, owners.map((o: any) => o.dim_users.email))
+          
+          // TODO: Implementar envío de email real usando servicio de email
+          // Ejemplo: SendGrid, Resend, etc.
+        }
+      }
+
       return NextResponse.json({
         success: true,
-        message: 'Cuenta creada. Espera aprobación del Owner.',
+        message: 'Cuenta creada. Revisa tu email para confirmar tu cuenta.',
         user_id: userId
       })
 

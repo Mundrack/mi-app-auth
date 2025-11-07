@@ -40,10 +40,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. Verificar que la solicitud existe y está pendiente
-    const { data: requestData, error: requestError } = await supabase
+    // 2. Obtener datos de la solicitud
+    const { data: requestData, error: requestError } = await supabaseAdmin
       .from('fact_join_requests')
-      .select('*')
+      .select(`
+        *,
+        dim_users!inner(email, full_name)
+      `)
       .eq('id', requestId)
       .eq('organization_id', currentMembership.organization_id)
       .eq('status', 'pending')
@@ -55,6 +58,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
+
+    const userData = requestData.dim_users as any
 
     // 3. Actualizar estado a rechazada
     const { error: updateError } = await supabaseAdmin
@@ -74,12 +79,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. (Opcional) Enviar email de notificación
-    // TODO: Implementar email de rechazo
+    // 4. Obtener nombre de la organización
+    const { data: orgData } = await supabaseAdmin
+      .from('dim_organizations')
+      .select('name')
+      .eq('id', currentMembership.organization_id)
+      .single()
+
+    // 5. Enviar email de rechazo (opcional)
+    console.log(`📧 Email de rechazo a ${userData.email} - Organización: ${orgData?.name}`)
+    
+    // TODO: Implementar envío de email de rechazo con servicio externo
+    // Supabase Auth no tiene template para rechazo, necesitas un servicio como:
+    // - Resend
+    // - SendGrid
+    // - Postmark
 
     return NextResponse.json({
       success: true,
-      message: 'Solicitud rechazada exitosamente'
+      message: 'Solicitud rechazada'
     })
 
   } catch (error) {

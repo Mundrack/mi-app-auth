@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Obtener datos de la solicitud
-    const { data: requestData, error: requestError } = await supabase
+    const { data: requestData, error: requestError } = await supabaseAdmin
       .from('fact_join_requests')
       .select(`
         *,
-        dim_users!inner(email, full_name, phone)
+        dim_users!inner(id, email, full_name, phone)
       `)
       .eq('id', requestId)
       .eq('organization_id', currentMembership.organization_id)
@@ -61,48 +61,27 @@ export async function POST(request: NextRequest) {
 
     const userData = requestData.dim_users as any
 
-    // 3. Crear usuario en Supabase Auth (con admin client)
-    const { data: newUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: userData.email,
-      email_confirm: true,
-      user_metadata: {
-        full_name: userData.full_name,
-      }
-    })
-
-    if (authError || !newUser) {
-      console.error('Error creating user:', authError)
-      return NextResponse.json(
-        { error: 'Error al crear el usuario: ' + (authError?.message || 'Unknown') },
-        { status: 500 }
-      )
-    }
-
-    // 4. Actualizar usuario en dim_users (activarlo)
+    // 3. Activar usuario
     const { error: updateUserError } = await supabaseAdmin
       .from('dim_users')
       .update({
-        id: newUser.user.id,
         is_active: true,
       })
-      .eq('email', userData.email)
+      .eq('id', userData.id)
 
     if (updateUserError) {
       console.error('Error updating user:', updateUserError)
-      // Intentar eliminar el usuario de auth si falla
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
-      
       return NextResponse.json(
         { error: 'Error al actualizar el usuario' },
         { status: 500 }
       )
     }
 
-    // 5. Crear membresía
+    // 4. Crear membresía
     const { error: membershipError } = await supabaseAdmin
       .from('fact_memberships')
       .insert({
-        user_id: newUser.user.id,
+        user_id: userData.id,
         organization_id: currentMembership.organization_id,
         position_id: requestData.position_id,
         role: 'member',
@@ -110,16 +89,13 @@ export async function POST(request: NextRequest) {
 
     if (membershipError) {
       console.error('Error creating membership:', membershipError)
-      // Rollback: eliminar usuario
-      await supabaseAdmin.auth.admin.deleteUser(newUser.user.id)
-      
       return NextResponse.json(
         { error: 'Error al crear la membresía' },
         { status: 500 }
       )
     }
 
-    // 6. Actualizar estado de la solicitud
+    // 5. Actualizar estado de la solicitud
     const { error: updateError } = await supabaseAdmin
       .from('fact_join_requests')
       .update({ 
@@ -133,17 +109,35 @@ export async function POST(request: NextRequest) {
       console.error('Error updating request:', updateError)
     }
 
-    // 7. Enviar email de recuperación de contraseña
-    await supabaseAdmin.auth.resetPasswordForEmail(userData.email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/login`,
-    })
+    // 6. Obtener nombre de la organización
+    const { data: orgData } = await supabaseAdmin
+      .from('dim_organizations')
+      .select('name')
+      .eq('id', currentMembership.organization_id)
+      .single()
+
+    // 7. Enviar email de aprobación al usuario
+    const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      userData.email,
+      {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`,
+        data: {
+          organization_name: orgData?.name,
+          status: 'approved'
+        }
+      }
+    )
+
+    if (emailError) {
+      console.error('Error sending approval email:', emailError)
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Usuario aprobado y creado exitosamente',
+      message: `✅ Solicitud aprobada. Email enviado a ${userData.email}`,
       user: {
-        id: newUser.user.id,
-        email: newUser.user.email,
+        id: userData.id,
+        email: userData.email,
       }
     })
 

@@ -5,6 +5,19 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useUser } from '@/lib/hooks/useUser'
+import { 
+  LayoutDashboard, 
+  Building2, 
+  Users, 
+  FileText, 
+  UserCircle, 
+  LogOut,
+  Menu,
+  X,
+  Bell,
+  Settings,
+  ChevronDown
+} from 'lucide-react'
 
 export default function DashboardLayout({
   children,
@@ -12,10 +25,11 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { role, loading: userLoading } = useUser()
+  const { role, userWithOrg, loading: userLoading } = useUser()
   const router = useRouter()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -25,8 +39,11 @@ export default function DashboardLayout({
 
   if (authLoading || userLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-600">Cargando...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-600 font-medium">Cargando...</p>
+        </div>
       </div>
     )
   }
@@ -35,129 +52,188 @@ export default function DashboardLayout({
 
   // Links del menú según rol
   const ownerLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { href: '/dashboard/organization', label: 'Mi Organización', icon: '🏢' },
-    { href: '/dashboard/members', label: 'Empleados', icon: '👥' },
-    { href: '/dashboard/requests', label: 'Solicitudes', icon: '📋' },
-    { href: '/dashboard/profile', label: 'Mi Perfil', icon: '👤' },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/organization', label: 'Mi Organización', icon: Building2 },
+    { href: '/dashboard/members', label: 'Empleados', icon: Users },
+    { href: '/dashboard/requests', label: 'Solicitudes', icon: FileText },
+    { href: '/dashboard/profile', label: 'Mi Perfil', icon: UserCircle },
   ]
 
   const memberLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { href: '/dashboard/profile', label: 'Mi Perfil', icon: '👤' },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard/profile', label: 'Mi Perfil', icon: UserCircle },
   ]
 
   const links = role === 'owner' || role === 'admin' ? ownerLinks : memberLinks
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Mobile */}
-      <header className="lg:hidden bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="flex items-center justify-between px-4 py-4">
-          <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-            Mi App
-          </Link>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 text-gray-600 hover:text-gray-900"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {menuOpen && (
-          <div className="border-t border-gray-200 py-4">
-            <nav className="px-4 space-y-2">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    pathname === link.href
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span>{link.icon}</span>
-                  <span className="font-medium">{link.label}</span>
-                </Link>
-              ))}
-              <button
-                onClick={signOut}
-                className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <span>🚪</span>
-                <span className="font-medium">Cerrar Sesión</span>
-              </button>
-            </nav>
-          </div>
-        )}
-      </header>
-
-      <div className="lg:flex">
-        {/* Sidebar Desktop */}
-        <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 bg-white border-r border-gray-200">
-          {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-gray-200">
-            <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-              Mi App
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50">
+        <div className="h-full px-4 flex items-center justify-between">
+          {/* Logo y toggle mobile */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+            
+            <Link href="/dashboard" className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">MA</span>
+              </div>
+              <span className="hidden sm:block text-lg font-semibold text-slate-900">Mi App</span>
             </Link>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  pathname === link.href
-                    ? 'bg-gray-900 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <span>{link.icon}</span>
-                <span className="font-medium">{link.label}</span>
-              </Link>
-            ))}
-          </nav>
+          {/* Right side */}
+          <div className="flex items-center gap-2">
+            {/* Notifications */}
+            <button className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors">
+              <Bell className="w-5 h-5 text-slate-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
 
-          {/* User Info + Logout */}
-          <div className="border-t border-gray-200 p-4">
-            <div className="flex items-center gap-3 px-4 py-2 mb-2">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-gray-600 font-medium">
-                  {user.email?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.email}
-                </p>
-                <p className="text-xs text-gray-500 capitalize">{role}</p>
+            {/* Profile dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-semibold">
+                    {userWithOrg?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-sm font-medium text-slate-900">{userWithOrg?.full_name}</p>
+                  <p className="text-xs text-slate-500 capitalize">{role}</p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2">
+                  <Link
+                    href="/dashboard/profile"
+                    className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
+                  >
+                    <UserCircle className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm text-slate-700">Mi Perfil</span>
+                  </Link>
+                  <Link
+                    href="/dashboard/settings"
+                    className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
+                  >
+                    <Settings className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm text-slate-700">Configuración</span>
+                  </Link>
+                  <hr className="my-2 border-slate-200" />
+                  <button
+                    onClick={signOut}
+                    className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-red-600"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="text-sm font-medium">Cerrar Sesión</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMenuOpen(false)}>
+          <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold">MA</span>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Mi App</p>
+                  <p className="text-xs text-slate-500">Multi-Tenant System</p>
+                </div>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            >
-              <span>🚪</span>
-              <span className="font-medium">Cerrar Sesión</span>
-            </button>
+            <nav className="p-4 space-y-1">
+              {links.map((link) => {
+                const Icon = link.icon
+                const isActive = pathname === link.href
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{link.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
           </div>
-        </aside>
+        </div>
+      )}
 
-        {/* Main Content */}
-        <main className="lg:pl-64 flex-1">
-          <div className="p-4 lg:p-8">
-            {children}
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16 bg-white border-r border-slate-200">
+        <div className="flex-1 overflow-y-auto p-4">
+          {/* Organization Info */}
+          {userWithOrg?.organization && (
+            <div className="mb-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
+              <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide mb-1">Organización</p>
+              <p className="font-semibold text-slate-900">{userWithOrg.organization.name}</p>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <nav className="space-y-1">
+            {links.map((link) => {
+              const Icon = link.icon
+              const isActive = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{link.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-200">
+          <div className="flex items-center gap-3 px-3 py-2 text-xs text-slate-500">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Sistema activo</span>
           </div>
-        </main>
-      </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="lg:pl-64 pt-16">
+        <div className="p-4 lg:p-8">
+          {children}
+        </div>
+      </main>
     </div>
   )
 }

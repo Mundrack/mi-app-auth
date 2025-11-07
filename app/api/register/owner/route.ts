@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
       description
     } = body
 
-    // Validaciones básicas
     if (!email || !password || !full_name || !organization_name) {
       return NextResponse.json(
         { error: 'Faltan campos requeridos' },
@@ -27,11 +26,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Crear usuario en Auth usando admin client
+    // 1. Crear usuario en Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirmar email
+      email_confirm: false, // ← Requiere confirmación
       user_metadata: {
         full_name,
       }
@@ -99,7 +98,7 @@ export async function POST(request: NextRequest) {
 
       if (profileError) throw profileError
 
-      // 6. Crear membresía (Owner) - ESTA ES LA QUE CAUSABA EL ERROR
+      // 6. Crear membresía (Owner)
       const { error: membershipError } = await supabaseAdmin
         .from('fact_memberships')
         .insert({
@@ -110,9 +109,18 @@ export async function POST(request: NextRequest) {
 
       if (membershipError) throw membershipError
 
+      // 7. Enviar email de confirmación
+      const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`
+      })
+
+      if (emailError) {
+        console.error('Error sending confirmation email:', emailError)
+      }
+
       return NextResponse.json({
         success: true,
-        message: 'Organización creada exitosamente',
+        message: '¡Organización creada! Revisa tu email para confirmar tu cuenta.',
         user: {
           id: userId,
           email,
@@ -120,7 +128,6 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (error: any) {
-      // Si algo falla, eliminar el usuario de Auth
       console.error('Registration error, rolling back:', error)
       await supabaseAdmin.auth.admin.deleteUser(userId)
       
