@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Logo } from '@/components/Logo'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import type { Industry } from '@/lib/types'
-import { Building2, User, Mail, Phone, Lock, MapPin, Globe, FileText, Briefcase, CheckCircle } from 'lucide-react'
+import { Building2, User, Mail, Phone, Lock, MapPin, Globe, FileText, Briefcase, AlertCircle } from 'lucide-react'
 
 export default function RegisterOwnerPage() {
   const [step, setStep] = useState(1)
@@ -14,6 +14,7 @@ export default function RegisterOwnerPage() {
   const [industries, setIndustries] = useState<Industry[]>([])
   const [error, setError] = useState('')
   const router = useRouter()
+  const supabase = createClient()
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -144,7 +145,8 @@ export default function RegisterOwnerPage() {
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
@@ -274,8 +276,7 @@ export default function RegisterOwnerPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-slate-400" />
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Tamaño
                     </label>
                     <select

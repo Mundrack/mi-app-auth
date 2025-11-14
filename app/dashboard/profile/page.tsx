@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useUser } from '@/lib/hooks/useUser'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { supabase } from '@/lib/supabase/client'
+import { useUser } from '@/lib/hooks/useUser'
+import { createClient } from '@/lib/supabase/client'
 import { User, Mail, Phone, Building2, Briefcase, Calendar, Edit, Save, X, CheckCircle } from 'lucide-react'
 
 export default function ProfilePage() {
   const { user } = useAuth()
   const { userWithOrg, role } = useUser()
+  const supabase = createClient()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)

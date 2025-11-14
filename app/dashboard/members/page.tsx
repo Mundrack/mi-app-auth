@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
-import { supabase } from '@/lib/supabase/client'
-import { Users, Crown, Shield, Briefcase, Search, Filter, Mail, Phone, MoreVertical } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Users, Crown, Shield, Briefcase, Search, Mail, Phone, MoreVertical } from 'lucide-react'
 
 interface Member {
   id: string
@@ -18,6 +18,7 @@ interface Member {
 
 export default function MembersPage() {
   const { userWithOrg, role } = useUser()
+  const supabase = createClient()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/hooks/useAuth'
 import Link from 'next/link'
-import { Building2, Mail, Briefcase, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Building2, Mail, Briefcase, CheckCircle, XCircle, Loader2, User, Phone, Lock } from 'lucide-react'
 
 interface InvitationData {
   email: string
@@ -229,7 +229,8 @@ export default function InvitationPage({ params }: { params: { token: string } }
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                      <User className="w-4 h-4 text-slate-400" />
                       Nombre Completo *
                     </label>
                     <input
@@ -242,7 +243,8 @@ export default function InvitationPage({ params }: { params: { token: string } }
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-slate-400" />
                       Teléfono
                     </label>
                     <input
@@ -254,7 +256,8 @@ export default function InvitationPage({ params }: { params: { token: string } }
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-slate-400" />
                       Contraseña *
                     </label>
                     <input
@@ -268,7 +271,8 @@ export default function InvitationPage({ params }: { params: { token: string } }
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-slate-400" />
                       Confirmar Contraseña *
                     </label>
                     <input

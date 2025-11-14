@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { generateSlug } from '@/lib/utils/formatters'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,14 +29,14 @@ export async function POST(request: NextRequest) {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: false, // ← Requiere confirmación
+      email_confirm: true,
       user_metadata: {
         full_name,
       }
     })
 
     if (authError || !authData.user) {
-      console.error('Auth error:', authError)
+      console.error('Error creating auth user:', authError)
       return NextResponse.json(
         { error: 'Error al crear usuario: ' + (authError?.message || 'Unknown') },
         { status: 500 }
@@ -48,43 +47,58 @@ export async function POST(request: NextRequest) {
 
     try {
       // 2. Crear organización
-      const orgSlug = generateSlug(organization_name)
+      const slug = organization_name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+
       const { data: orgData, error: orgError } = await supabaseAdmin
         .from('dim_organizations')
         .insert({
           name: organization_name,
-          slug: orgSlug,
+          slug: slug,
+          is_active: true,
         })
         .select()
         .single()
 
-      if (orgError) throw orgError
+      if (orgError) {
+        await supabaseAdmin.auth.admin.deleteUser(userId)
+        throw orgError
+      }
 
-      // 3. Crear ubicación
-      const { data: locationData, error: locationError } = await supabaseAdmin
-        .from('dim_locations')
-        .insert({
-          city,
-          country,
-        })
-        .select()
-        .single()
+      // 3. Crear ubicación (si se proporcionó)
+      let locationId = null
+      if (city && country) {
+        const { data: locationData, error: locationError } = await supabaseAdmin
+          .from('dim_locations')
+          .insert({
+            city,
+            country,
+          })
+          .select()
+          .single()
 
-      if (locationError) throw locationError
+        if (!locationError && locationData) {
+          locationId = locationData.id
+        }
+      }
 
       // 4. Crear detalles de organización
       const { error: detailsError } = await supabaseAdmin
-        .from('fact_organization_details')
+        .from('dim_organization_details')
         .insert({
           organization_id: orgData.id,
           industry_id: industry_id || null,
-          location_id: locationData.id,
-          size,
+          location_id: locationId,
+          size: size || null,
           website: website || null,
           description: description || null,
         })
 
-      if (detailsError) throw detailsError
+      if (detailsError) {
+        console.error('Error creating org details:', detailsError)
+      }
 
       // 5. Crear perfil de usuario
       const { error: profileError } = await supabaseAdmin
@@ -94,9 +108,14 @@ export async function POST(request: NextRequest) {
           email,
           full_name,
           phone: phone || null,
+          is_active: true,
         })
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.error('Error creating user profile:', profileError)
+        await supabaseAdmin.auth.admin.deleteUser(userId)
+        throw profileError
+      }
 
       // 6. Crear membresía (Owner)
       const { error: membershipError } = await supabaseAdmin
@@ -107,40 +126,29 @@ export async function POST(request: NextRequest) {
           role: 'owner',
         })
 
-      if (membershipError) throw membershipError
-
-      // 7. Enviar email de confirmación
-      const { error: emailError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`
-      })
-
-      if (emailError) {
-        console.error('Error sending confirmation email:', emailError)
+      if (membershipError) {
+        console.error('Error creating membership:', membershipError)
+        await supabaseAdmin.auth.admin.deleteUser(userId)
+        throw membershipError
       }
 
       return NextResponse.json({
         success: true,
-        message: '¡Organización creada! Revisa tu email para confirmar tu cuenta.',
-        user: {
-          id: userId,
-          email,
-        }
+        message: 'Organización creada exitosamente',
+        user_id: userId,
+        organization_id: orgData.id
       })
 
     } catch (error: any) {
-      console.error('Registration error, rolling back:', error)
+      // Rollback: eliminar usuario de auth
       await supabaseAdmin.auth.admin.deleteUser(userId)
-      
-      return NextResponse.json(
-        { error: 'Error al crear la organización: ' + error.message },
-        { status: 500 }
-      )
+      throw error
     }
 
   } catch (error: any) {
     console.error('Server error:', error)
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: 'Error al crear organización: ' + error.message },
       { status: 500 }
     )
   }

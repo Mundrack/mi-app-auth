@@ -1,20 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
-import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Mail, Copy, Check, Plus, Send, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
-
-interface Invitation {
-  id: string
-  email: string
-  token: string
-  status: string
-  created_at: string
-  expires_at: string
-  accepted_at: string | null
-  position_title: string | null
-}
+import { Mail, Copy, Check, Plus, Send, Clock, AlertCircle } from 'lucide-react'
 
 export default function InvitationsPage() {
   const { userWithOrg, role } = useUser()
@@ -22,25 +10,12 @@ export default function InvitationsPage() {
   const [sending, setSending] = useState(false)
   const [copiedLink, setCopiedLink] = useState('')
   const [invitationLink, setInvitationLink] = useState('')
-  const [invitations, setInvitations] = useState<Invitation[]>([])
-  const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     email: '',
     position_id: ''
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-
-  useEffect(() => {
-    if (userWithOrg?.organization?.id) {
-      loadInvitations()
-    }
-  }, [userWithOrg])
-
-  const loadInvitations = async () => {
-    // TODO: Implementar carga de invitaciones desde la BD
-    setLoading(false)
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,7 +40,6 @@ export default function InvitationsPage() {
       setSuccess(`✅ Invitación enviada a ${formData.email}`)
       setInvitationLink(data.invitation_link)
       setFormData({ email: '', position_id: '' })
-      loadInvitations() // Recargar lista
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -79,43 +53,12 @@ export default function InvitationsPage() {
     setTimeout(() => setCopiedLink(''), 2000)
   }
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      accepted: 'bg-green-100 text-green-700 border-green-200',
-      expired: 'bg-red-100 text-red-700 border-red-200'
-    }
-    const icons = {
-      pending: <Clock className="w-3 h-3" />,
-      accepted: <CheckCircle className="w-3 h-3" />,
-      expired: <XCircle className="w-3 h-3" />
-    }
-    const labels = {
-      pending: 'Pendiente',
-      accepted: 'Aceptada',
-      expired: 'Expirada'
-    }
-    return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${styles[status as keyof typeof styles]}`}>
-        {icons[status as keyof typeof icons]}
-        {labels[status as keyof typeof labels]}
-      </span>
-    )
-  }
-
   if (role !== 'owner' && role !== 'admin') {
     return (
       <div className="text-center py-12">
         <p className="text-slate-600">No tienes permisos para acceder a esta página</p>
       </div>
     )
-  }
-
-  const stats = {
-    total: invitations.length,
-    pending: invitations.filter(i => i.status === 'pending').length,
-    accepted: invitations.filter(i => i.status === 'accepted').length,
-    expired: invitations.filter(i => i.status === 'expired').length
   }
 
   return (
@@ -136,7 +79,7 @@ export default function InvitationsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-3 bg-indigo-100 rounded-lg">
@@ -144,7 +87,7 @@ export default function InvitationsPage() {
             </div>
           </div>
           <p className="text-sm text-slate-600 mb-1">Total Enviadas</p>
-          <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
+          <p className="text-3xl font-bold text-slate-900">0</p>
         </div>
 
         <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
@@ -154,27 +97,17 @@ export default function InvitationsPage() {
             </div>
           </div>
           <p className="text-sm text-slate-600 mb-1">Pendientes</p>
-          <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
+          <p className="text-3xl font-bold text-slate-900">0</p>
         </div>
 
         <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-3 bg-green-100 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+              <Check className="w-6 h-6 text-green-600" />
             </div>
           </div>
           <p className="text-sm text-slate-600 mb-1">Aceptadas</p>
-          <p className="text-3xl font-bold text-slate-900">{stats.accepted}</p>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-red-100 rounded-lg">
-              <XCircle className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-          <p className="text-sm text-slate-600 mb-1">Expiradas</p>
-          <p className="text-3xl font-bold text-slate-900">{stats.expired}</p>
+          <p className="text-3xl font-bold text-slate-900">0</p>
         </div>
       </div>
 
@@ -192,7 +125,7 @@ export default function InvitationsPage() {
 
           {success && (
             <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-green-800">{success}</p>
             </div>
           )}
@@ -322,82 +255,6 @@ export default function InvitationsPage() {
             <span>Una vez aceptada, la persona se integra automáticamente a tu organización</span>
           </li>
         </ol>
-      </div>
-
-      {/* Historial de Invitaciones */}
-      <div className="bg-white rounded-xl border border-slate-200">
-        <div className="p-6 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-900">Historial de Invitaciones</h3>
-        </div>
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-slate-600">Cargando invitaciones...</p>
-          </div>
-        ) : invitations.length === 0 ? (
-          <div className="p-12 text-center">
-            <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-600 mb-2">No hay invitaciones aún</p>
-            <p className="text-sm text-slate-500">Crea tu primera invitación para empezar</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase">Email</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase">Puesto</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Estado</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Enviada</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Expira</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {invitations.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-slate-400" />
-                        <span className="font-medium text-slate-900">{inv.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {inv.position_title ? (
-                        <span className="text-sm text-slate-700">{inv.position_title}</span>
-                      ) : (
-                        <span className="text-sm text-slate-400">Sin asignar</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {getStatusBadge(inv.status)}
-                    </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
-                      {new Date(inv.created_at).toLocaleDateString('es-ES')}
-                    </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-600">
-                      {new Date(inv.expires_at).toLocaleDateString('es-ES')}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {inv.status === 'pending' && (
-                        <button
-                          onClick={() => copyLink(`${process.env.NEXT_PUBLIC_SITE_URL}/invite/${inv.token}`)}
-                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Copiar link"
-                        >
-                          {copiedLink === `${process.env.NEXT_PUBLIC_SITE_URL}/invite/${inv.token}` 
-                            ? <Check className="w-4 h-4 text-green-600" />
-                            : <Copy className="w-4 h-4 text-slate-600" />
-                          }
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   )

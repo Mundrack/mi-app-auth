@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. TODO: Enviar email con el link
+    // 4. Link de invitación
     const invitationLink = `${process.env.NEXT_PUBLIC_SITE_URL}/invite/${token}`
     
     console.log('📧 Invitación creada:', {

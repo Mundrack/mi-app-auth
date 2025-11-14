@@ -1,238 +1,168 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import Link from 'next/link'
-import { Logo } from '@/components/Logo'
-import { useAuth } from '@/lib/hooks/useAuth'
 import { useUser } from '@/lib/hooks/useUser'
-import { 
-  LayoutDashboard, 
-  Building2, 
-  Users, 
-  UserCircle, 
-  LogOut,
-  Menu,
-  X,
-  Bell,
-  Settings,
-  ChevronDown,
-  Mail
-} from 'lucide-react'
+import Link from 'next/link'
+import { Building2, Users, Mail, UserCircle, TrendingUp } from 'lucide-react'
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const { user, loading: authLoading, signOut } = useAuth()
-  const { role, userWithOrg, loading: userLoading } = useUser()
-  const router = useRouter()
-  const pathname = usePathname()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
+export default function DashboardPage() {
+  const { userWithOrg, role } = useUser()
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login')
-    }
-  }, [user, authLoading, router])
-
-  if (authLoading || userLoading) {
+  if (!userWithOrg) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-600 font-medium">Cargando...</p>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="text-slate-600">Cargando información...</div>
       </div>
     )
   }
 
-  if (!user) return null
-
-  // Links del menú según rol (SIN SOLICITUDES)
-  const ownerLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/organization', label: 'Mi Organización', icon: Building2 },
-    { href: '/dashboard/members', label: 'Empleados', icon: Users },
-    { href: '/dashboard/invitations', label: 'Invitaciones', icon: Mail },
-    { href: '/dashboard/profile', label: 'Mi Perfil', icon: UserCircle },
-  ]
-
-  const memberLinks = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/profile', label: 'Mi Perfil', icon: UserCircle },
-  ]
-
-  const links = role === 'owner' || role === 'admin' ? ownerLinks : memberLinks
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50">
-        <div className="h-full px-4 flex items-center justify-between">
-          {/* Logo y toggle mobile */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            
-            <Logo size="md" showText href="/dashboard" />
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white">
+        <h1 className="text-3xl font-bold mb-2">
+          ¡Bienvenido, {userWithOrg.full_name}! 👋
+        </h1>
+        <p className="text-indigo-100">
+          {role === 'owner' ? 'Gestiona tu organización desde aquí' : 'Tu panel de control personal'}
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      {(role === 'owner' || role === 'admin') && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-indigo-100 rounded-lg">
+                <Users className="w-6 h-6 text-indigo-600" />
+              </div>
+              <span className="text-sm text-green-600 font-semibold flex items-center gap-1">
+                <TrendingUp className="w-4 h-4" />
+                +12%
+              </span>
+            </div>
+            <p className="text-slate-600 text-sm mb-1">Total Empleados</p>
+            <p className="text-3xl font-bold text-slate-900">24</p>
           </div>
 
-          {/* Right side */}
-          <div className="flex items-center gap-2">
-            {/* Notifications */}
-            <button className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors">
-              <Bell className="w-5 h-5 text-slate-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
-
-            {/* Profile dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-3 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-semibold">
-                    {userWithOrg?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium text-slate-900">{userWithOrg?.full_name}</p>
-                  <p className="text-xs text-slate-500 capitalize">{role}</p>
-                </div>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {profileOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setProfileOpen(false)}
-                  ></div>
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-20">
-                    <Link
-                      href="/dashboard/profile"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
-                    >
-                      <UserCircle className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm text-slate-700">Mi Perfil</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/settings"
-                      onClick={() => setProfileOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
-                    >
-                      <Settings className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm text-slate-700">Configuración</span>
-                    </Link>
-                    <hr className="my-2 border-slate-200" />
-                    <button
-                      onClick={() => {
-                        setProfileOpen(false)
-                        signOut()
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-red-600"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="text-sm font-medium">Cerrar Sesión</span>
-                    </button>
-                  </div>
-                </>
-              )}
+          <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Mail className="w-6 h-6 text-purple-600" />
+              </div>
+              <span className="text-sm text-yellow-600 font-semibold">Pendientes</span>
             </div>
+            <p className="text-slate-600 text-sm mb-1">Invitaciones</p>
+            <p className="text-3xl font-bold text-slate-900">5</p>
           </div>
-        </div>
-      </header>
 
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMenuOpen(false)}>
-          <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-slate-200">
-              <Logo size="md" showText />
+          <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Building2 className="w-6 h-6 text-green-600" />
+              </div>
+              <span className="text-sm text-green-600 font-semibold">Activa</span>
             </div>
-            <nav className="p-4 space-y-1">
-              {links.map((link) => {
-                const Icon = link.icon
-                const isActive = pathname === link.href
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                      isActive
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{link.label}</span>
-                  </Link>
-                )
-              })}
-            </nav>
+            <p className="text-slate-600 text-sm mb-1">Organización</p>
+            <p className="text-lg font-bold text-slate-900 truncate">{userWithOrg.organization?.name}</p>
           </div>
         </div>
       )}
 
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:pt-16 bg-white border-r border-slate-200">
-        <div className="flex-1 overflow-y-auto p-4">
-          {/* Organization Info */}
-          {userWithOrg?.organization && (
-            <div className="mb-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
-              <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide mb-1">Organización</p>
-              <p className="font-semibold text-slate-900">{userWithOrg.organization.name}</p>
-            </div>
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">Accesos Rápidos</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Owner/Admin Links */}
+          {(role === 'owner' || role === 'admin') && (
+            <>
+              <Link
+                href="/dashboard/organization"
+                className="group bg-white border border-slate-200 rounded-xl p-6 hover:shadow-xl hover:border-indigo-300 transition-all"
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Building2 className="w-6 h-6 text-indigo-600" />
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">Mi Organización</h3>
+                <p className="text-sm text-slate-600">
+                  Ver información de tu empresa
+                </p>
+              </Link>
+
+              <Link
+                href="/dashboard/members"
+                className="group bg-white border border-slate-200 rounded-xl p-6 hover:shadow-xl hover:border-purple-300 transition-all"
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Users className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">Empleados</h3>
+                <p className="text-sm text-slate-600">
+                  Gestionar tu equipo de trabajo
+                </p>
+              </Link>
+
+              <Link
+                href="/dashboard/invitations"
+                className="group bg-white border border-slate-200 rounded-xl p-6 hover:shadow-xl hover:border-blue-300 transition-all"
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Mail className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">Invitaciones</h3>
+                <p className="text-sm text-slate-600">
+                  Invitar nuevos miembros
+                </p>
+              </Link>
+            </>
           )}
 
-          {/* Navigation */}
-          <nav className="space-y-1">
-            {links.map((link) => {
-              const Icon = link.icon
-              const isActive = pathname === link.href
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-200'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{link.label}</span>
-                </Link>
-              )
-            })}
-          </nav>
+          {/* Common Link */}
+          <Link
+            href="/dashboard/profile"
+            className="group bg-white border border-slate-200 rounded-xl p-6 hover:shadow-xl hover:border-green-300 transition-all"
+          >
+            <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <UserCircle className="w-6 h-6 text-green-600" />
+            </div>
+            <h3 className="font-semibold text-slate-900 mb-2">Mi Perfil</h3>
+            <p className="text-sm text-slate-600">
+              Ver y editar tu información
+            </p>
+          </Link>
         </div>
+      </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-200">
-          <div className="flex items-center gap-3 px-3 py-2 text-xs text-slate-500">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span>Sistema activo</span>
+      {/* Info Card - Para Members */}
+      {role === 'member' && userWithOrg?.organization && (
+        <div className="bg-white rounded-xl p-6 border border-slate-200">
+          <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            Tu Organización
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <span className="text-sm text-slate-600">Empresa:</span>
+              <p className="font-medium text-slate-900">
+                {userWithOrg.organization.name}
+              </p>
+            </div>
+            {userWithOrg.position && (
+              <div>
+                <span className="text-sm text-slate-600">Tu Puesto:</span>
+                <p className="font-medium text-slate-900">
+                  {userWithOrg.position.title}
+                </p>
+              </div>
+            )}
+            <div>
+              <span className="text-sm text-slate-600">Rol:</span>
+              <p className="font-medium text-slate-900 capitalize">
+                {role === 'owner' ? 'Propietario' : 
+                 role === 'admin' ? 'Administrador' : 'Miembro'}
+              </p>
+            </div>
           </div>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="lg:pl-64 pt-16">
-        <div className="p-4 lg:p-8">
-          {children}
-        </div>
-      </main>
+      )}
     </div>
   )
 }
