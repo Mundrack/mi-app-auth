@@ -1,8 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useUser } from '@/lib/hooks/useUser'
-import { Mail, Copy, Check, Plus, Send, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+import { Mail, Copy, Check, Plus, Send, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+
+interface Invitation {
+  id: string
+  email: string
+  token: string
+  status: string
+  created_at: string
+  expires_at: string
+  accepted_at: string | null
+  position_title: string | null
+}
 
 export default function InvitationsPage() {
   const { userWithOrg, role } = useUser()
@@ -10,12 +22,25 @@ export default function InvitationsPage() {
   const [sending, setSending] = useState(false)
   const [copiedLink, setCopiedLink] = useState('')
   const [invitationLink, setInvitationLink] = useState('')
+  const [invitations, setInvitations] = useState<Invitation[]>([])
+  const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     email: '',
     position_id: ''
   })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    if (userWithOrg?.organization?.id) {
+      loadInvitations()
+    }
+  }, [userWithOrg])
+
+  const loadInvitations = async () => {
+    // TODO: Implementar carga de invitaciones desde la BD
+    setLoading(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,6 +65,7 @@ export default function InvitationsPage() {
       setSuccess(`✅ Invitación enviada a ${formData.email}`)
       setInvitationLink(data.invitation_link)
       setFormData({ email: '', position_id: '' })
+      loadInvitations() // Recargar lista
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -53,12 +79,43 @@ export default function InvitationsPage() {
     setTimeout(() => setCopiedLink(''), 2000)
   }
 
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+      accepted: 'bg-green-100 text-green-700 border-green-200',
+      expired: 'bg-red-100 text-red-700 border-red-200'
+    }
+    const icons = {
+      pending: <Clock className="w-3 h-3" />,
+      accepted: <CheckCircle className="w-3 h-3" />,
+      expired: <XCircle className="w-3 h-3" />
+    }
+    const labels = {
+      pending: 'Pendiente',
+      accepted: 'Aceptada',
+      expired: 'Expirada'
+    }
+    return (
+      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${styles[status as keyof typeof styles]}`}>
+        {icons[status as keyof typeof icons]}
+        {labels[status as keyof typeof labels]}
+      </span>
+    )
+  }
+
   if (role !== 'owner' && role !== 'admin') {
     return (
       <div className="text-center py-12">
         <p className="text-slate-600">No tienes permisos para acceder a esta página</p>
       </div>
     )
+  }
+
+  const stats = {
+    total: invitations.length,
+    pending: invitations.filter(i => i.status === 'pending').length,
+    accepted: invitations.filter(i => i.status === 'accepted').length,
+    expired: invitations.filter(i => i.status === 'expired').length
   }
 
   return (
@@ -71,56 +128,106 @@ export default function InvitationsPage() {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg"
         >
           <Plus className="w-5 h-5" />
           Nueva Invitación
         </button>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-3 bg-indigo-100 rounded-lg">
+              <Send className="w-6 h-6 text-indigo-600" />
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 mb-1">Total Enviadas</p>
+          <p className="text-3xl font-bold text-slate-900">{stats.total}</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-3 bg-yellow-100 rounded-lg">
+              <Clock className="w-6 h-6 text-yellow-600" />
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 mb-1">Pendientes</p>
+          <p className="text-3xl font-bold text-slate-900">{stats.pending}</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 mb-1">Aceptadas</p>
+          <p className="text-3xl font-bold text-slate-900">{stats.accepted}</p>
+        </div>
+
+        <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-3 bg-red-100 rounded-lg">
+              <XCircle className="w-6 h-6 text-red-600" />
+            </div>
+          </div>
+          <p className="text-sm text-slate-600 mb-1">Expiradas</p>
+          <p className="text-3xl font-bold text-slate-900">{stats.expired}</p>
+        </div>
+      </div>
+
       {/* Formulario de invitación */}
       {showForm && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h2 className="text-xl font-semibold text-slate-900 mb-4">Enviar Invitación</h2>
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-lg">
+          <h2 className="text-xl font-semibold text-slate-900 mb-4">Enviar Nueva Invitación</h2>
           
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-green-800">{success}</p>
             </div>
           )}
 
           {invitationLink && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 mb-2 font-medium">Link de invitación generado:</p>
+              <p className="text-sm text-blue-800 mb-2 font-medium flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Link de invitación generado:
+              </p>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={invitationLink}
                   readOnly
-                  className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded text-sm"
+                  className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded text-sm font-mono"
                 />
                 <button
                   onClick={() => copyLink(invitationLink)}
                   className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  title="Copiar link"
                 >
                   {copiedLink === invitationLink ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
               <p className="text-xs text-blue-600 mt-2">
-                💡 Copia este link y envíalo por email, WhatsApp o Slack
+                💡 Copia este link y envíalo por email, WhatsApp o Slack. Expira en 7 días.
               </p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-slate-400" />
                 Email del invitado *
               </label>
               <input
@@ -146,7 +253,6 @@ export default function InvitationsPage() {
                 <option value="">CEO</option>
                 <option value="">Director de Marketing</option>
                 <option value="">Desarrollador</option>
-                {/* Aquí puedes cargar los puestos dinámicamente */}
               </select>
               <p className="text-xs text-slate-500 mt-1">
                 El puesto puede asignarse después desde el panel de empleados
@@ -162,14 +268,14 @@ export default function InvitationsPage() {
                   setSuccess('')
                   setInvitationLink('')
                 }}
-                className="flex-1 px-4 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-semibold"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={sending}
-                className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 transition-colors font-semibold flex items-center justify-center gap-2"
               >
                 {sending ? (
                   <>
@@ -188,64 +294,110 @@ export default function InvitationsPage() {
         </div>
       )}
 
-      {/* Info cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl p-6 border border-slate-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Send className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-          <h3 className="font-semibold text-slate-900 mb-1">Invitaciones Enviadas</h3>
-          <p className="text-3xl font-bold text-slate-900">0</p>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 border border-slate-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-yellow-100 rounded-lg">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-          </div>
-          <h3 className="font-semibold text-slate-900 mb-1">Pendientes</h3>
-          <p className="text-3xl font-bold text-slate-900">0</p>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 border border-slate-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-          <h3 className="font-semibold text-slate-900 mb-1">Aceptadas</h3>
-          <p className="text-3xl font-bold text-slate-900">0</p>
-        </div>
-      </div>
-
       {/* Instrucciones */}
       <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-100">
-        <h3 className="font-semibold text-slate-900 mb-3">📋 Cómo funciona</h3>
+        <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <Mail className="w-5 h-5 text-indigo-600" />
+          Cómo funciona el sistema de invitaciones
+        </h3>
         <ol className="space-y-2 text-sm text-slate-700">
           <li className="flex items-start gap-2">
-            <span className="font-semibold text-indigo-600">1.</span>
-            <span>Haz clic en "Nueva Invitación" y escribe el email de la persona</span>
+            <span className="font-semibold text-indigo-600 min-w-[20px]">1.</span>
+            <span>Haz clic en "Nueva Invitación" y escribe el email de la persona que deseas invitar</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="font-semibold text-indigo-600">2.</span>
-            <span>Se generará un link único que expira en 7 días</span>
+            <span className="font-semibold text-indigo-600 min-w-[20px]">2.</span>
+            <span>Se generará un link único y seguro que expira en 7 días</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="font-semibold text-indigo-600">3.</span>
-            <span>Copia el link y envíalo por email, WhatsApp o Slack</span>
+            <span className="font-semibold text-indigo-600 min-w-[20px]">3.</span>
+            <span>Copia el link y envíalo por email, WhatsApp, Slack o cualquier medio</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="font-semibold text-indigo-600">4.</span>
-            <span>La persona recibirá el link y podrá aceptar la invitación</span>
+            <span className="font-semibold text-indigo-600 min-w-[20px]">4.</span>
+            <span>La persona hace clic en el link y si no tiene cuenta, la crea en ese momento</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="font-semibold text-indigo-600">5.</span>
-            <span>Si no tiene cuenta, la creará automáticamente al aceptar</span>
+            <span className="font-semibold text-indigo-600 min-w-[20px]">5.</span>
+            <span>Una vez aceptada, la persona se integra automáticamente a tu organización</span>
           </li>
         </ol>
+      </div>
+
+      {/* Historial de Invitaciones */}
+      <div className="bg-white rounded-xl border border-slate-200">
+        <div className="p-6 border-b border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-900">Historial de Invitaciones</h3>
+        </div>
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600">Cargando invitaciones...</p>
+          </div>
+        ) : invitations.length === 0 ? (
+          <div className="p-12 text-center">
+            <Mail className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-600 mb-2">No hay invitaciones aún</p>
+            <p className="text-sm text-slate-500">Crea tu primera invitación para empezar</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase">Email</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase">Puesto</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Estado</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Enviada</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Expira</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-600 uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {invitations.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-slate-400" />
+                        <span className="font-medium text-slate-900">{inv.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {inv.position_title ? (
+                        <span className="text-sm text-slate-700">{inv.position_title}</span>
+                      ) : (
+                        <span className="text-sm text-slate-400">Sin asignar</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {getStatusBadge(inv.status)}
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                      {new Date(inv.created_at).toLocaleDateString('es-ES')}
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm text-slate-600">
+                      {new Date(inv.expires_at).toLocaleDateString('es-ES')}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {inv.status === 'pending' && (
+                        <button
+                          onClick={() => copyLink(`${process.env.NEXT_PUBLIC_SITE_URL}/invite/${inv.token}`)}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Copiar link"
+                        >
+                          {copiedLink === `${process.env.NEXT_PUBLIC_SITE_URL}/invite/${inv.token}` 
+                            ? <Check className="w-4 h-4 text-green-600" />
+                            : <Copy className="w-4 h-4 text-slate-600" />
+                          }
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )
