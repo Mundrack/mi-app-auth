@@ -1,110 +1,206 @@
 'use client'
 
-import Link from 'next/link'
-import { Logo } from '@/components/Logo'
-import { 
-  Activity,
-  ChevronLeft,
-  Calendar,
-  Clock,
-  User,
-  Building2,
-  Settings,
-  AlertCircle
-} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
 
-export default function ActivityPage() {
-  // Mock data - en producción conectar a una tabla de logs
-  const activities = [
-    {
-      id: 1,
-      type: 'user_created',
-      user: 'Juan Pérez',
-      description: 'Nuevo usuario registrado',
-      timestamp: new Date().toISOString(),
-      icon: User,
-      color: 'blue'
-    },
-    {
-      id: 2,
-      type: 'org_created',
-      user: 'María García',
-      description: 'Nueva organización "Tech Corp" creada',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      icon: Building2,
-      color: 'purple'
-    },
-    {
-      id: 3,
-      type: 'settings_changed',
-      user: 'Admin',
-      description: 'Configuración del sistema actualizada',
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      icon: Settings,
-      color: 'green'
+interface User {
+  id: string
+  full_name: string
+  email: string
+  is_active: boolean
+  is_super_admin: boolean
+  created_at: string
+  last_login: string | null
+  organization_count: number
+}
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  async function loadUsers() {
+    try {
+      // Obtener todos los usuarios
+      const { data: usersData, error: usersError } = await supabase
+        .from('dim_users')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (usersError) throw usersError
+
+      // Para cada usuario, contar organizaciones
+      const usersWithDetails = await Promise.all(
+        (usersData || []).map(async (user) => {
+          const { count } = await supabase
+            .from('fact_memberships')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+
+          return {
+            ...user,
+            organization_count: count || 0,
+          }
+        })
+      )
+
+      setUsers(usersWithDetails as User[])
+    } catch (error) {
+      console.error('Error loading users:', error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  const filteredUsers = users.filter(user =>
+    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-gray-600">Cargando usuarios...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="space-y-6">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/super-admin"
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-white" />
-            </Link>
-            <Logo size="md" showText={false} />
-            <div>
-              <h1 className="text-xl font-bold text-white">Log de Actividad</h1>
-              <p className="text-sm text-purple-200">Actividad del sistema</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Usuarios</h1>
+        <p className="text-gray-600 mt-2">
+          Administrar todos los usuarios del sistema
+        </p>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-6">
-          <div className="space-y-4">
-            {activities.map((activity) => {
-              const Icon = activity.icon
-              return (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  <div className={`p-2 bg-${activity.color}-500/20 rounded-lg`}>
-                    <Icon className={`w-5 h-5 text-${activity.color}-400`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-medium mb-1">{activity.description}</p>
-                    <div className="flex items-center gap-4 text-xs text-white/50">
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {activity.user}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(activity.timestamp).toLocaleString('es-ES')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+      {/* Search Bar */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar por nombre o email..."
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
 
-          {/* Coming Soon */}
-          <div className="mt-8 p-6 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-center">
-            <AlertCircle className="w-8 h-8 text-yellow-300 mx-auto mb-2" />
-            <p className="text-yellow-200 font-medium">Sistema de logs completo en desarrollo</p>
-            <p className="text-yellow-200/70 text-sm mt-1">Próximamente con filtros avanzados y exportación</p>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <p className="text-sm text-gray-600">Total</p>
+          <p className="text-2xl font-bold text-gray-900">{users.length}</p>
         </div>
-      </main>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <p className="text-sm text-gray-600">Activos</p>
+          <p className="text-2xl font-bold text-green-600">
+            {users.filter(u => u.is_active).length}
+          </p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <p className="text-sm text-gray-600">Super Admins</p>
+          <p className="text-2xl font-bold text-purple-600">
+            {users.filter(u => u.is_super_admin).length}
+          </p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <p className="text-sm text-gray-600">Inactivos</p>
+          <p className="text-2xl font-bold text-gray-400">
+            {users.filter(u => !u.is_active).length}
+          </p>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Usuario
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Organizaciones
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Rol Especial
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Estado
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Último Login
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                  Fecha Registro
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    No se encontraron usuarios
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium text-gray-900">{user.full_name}</div>
+                        <div className="text-sm text-gray-500">{user.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 font-medium">
+                        {user.organization_count} {user.organization_count === 1 ? 'org' : 'orgs'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {user.is_super_admin ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800">
+                          ⭐ Super Admin
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                        user.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">
+                        {user.last_login
+                          ? new Date(user.last_login).toLocaleDateString()
+                          : 'Nunca'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
